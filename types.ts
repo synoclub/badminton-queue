@@ -14,8 +14,8 @@ export interface Player {
   name: string;
   status: PlayerStatus;
   level: SkillLevel; // Added level
-  joinedAt: number; 
-  groupId?: string; 
+  joinedAt: number;
+  groupId?: string;
 }
 
 export interface Court {
@@ -33,4 +33,4 @@ export interface Member {
 }
 
 export const MAX_PLAYERS_PER_COURT = 4;
-export const INITIAL_COURT_COUNT = 6;
+export const INITIAL_COURT_COUNT = 7;
