@@ -22,3 +22,4 @@ View your app in AI Studio: https://ai.studio/apps/drive/146qvSvKcpudmnOXZ5WoVft
 
 ## TODO
 - [] 有個入口概念，來創建房間，方便大家盡到同個入口，這樣應該才可以有成員紀錄
+- [] 把 CSS 看有沒有機會拆出來 ?
