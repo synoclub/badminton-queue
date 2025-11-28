@@ -21,4 +21,4 @@ View your app in AI Studio: https://ai.studio/apps/drive/146qvSvKcpudmnOXZ5WoVft
 
 
 ## TODO
-- [] 另台裝置的 websocket 目前會一直中斷
+- [] 有個入口概念，來創建房間，方便大家盡到同個入口，這樣應該才可以有成員紀錄

@@ -2,7 +2,10 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { WebSocketMessage, ConnectionStatus } from '../types/websocket';
 import { generateUUID } from '../utils/uuid';
 
-const WS_URL = 'ws://localhost:8080';
+const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_HOST = window.location.hostname;
+const WS_PORT = '8080';
+const WS_URL = `${WS_PROTOCOL}//${WS_HOST}:${WS_PORT}`;
 const RECONNECT_INTERVAL = 3000; // 3 seconds
 const MAX_RECONNECT_ATTEMPTS = 10;
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
@@ -31,6 +34,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const connect = useCallback(() => {
     // Clean up existing connection
     if (wsRef.current) {
+      wsRef.current.onclose = null; // Prevent triggering reconnect logic
       wsRef.current.close();
       wsRef.current = null;
     }
@@ -138,6 +142,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       clearInterval(heartbeatIntervalRef.current);
     }
     if (wsRef.current) {
+      wsRef.current.onclose = null; // Prevent triggering reconnect logic
       wsRef.current.close();
       wsRef.current = null;
     }
