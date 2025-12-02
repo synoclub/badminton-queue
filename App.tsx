@@ -1,9 +1,12 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Users, Activity, Coffee, ArrowRight, RotateCcw, Trash2, Trophy, Plus, Minus, Volume2, VolumeX, X, Swords, UserCheck, Search, CheckCircle2, ChevronDown, ChevronRight, Unlink, ArrowUp, PanelLeft, LogOut, UserX, ChevronUp, Zap, UserPlus } from 'lucide-react';
+import { Users, Activity, Coffee, ArrowRight, RotateCcw, Trash2, Trophy, Plus, Minus, Volume2, VolumeX, X, Swords, UserCheck, Search, CheckCircle2, ChevronDown, ChevronRight, Unlink, ArrowUp, PanelLeft, LogOut, UserX, ChevronUp, Zap, UserPlus, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Player, Court, Member, INITIAL_COURT_COUNT, MAX_PLAYERS_PER_COURT, SkillLevel, SKILL_LEVELS } from './types';
 import { CourtCard } from './components/CourtCard';
 import { PlayerAvatar } from './components/PlayerAvatar';
+import { useSync } from './contexts/SyncContext';
+import { generateUUID } from './utils/uuid';
 
+// TODO TESTTT
 type Tab = 'queue' | 'members';
 
 // Helper to generate consistent colors for groups
@@ -33,43 +36,23 @@ export default function App() {
   const [isMemberListExpanded, setIsMemberListExpanded] = useState(true);
 
   // Member UI Collapse State
-  const [isSearchExpanded, setIsSearchExpanded] = useState(true);
-  const [isAddMemberExpanded, setIsAddMemberExpanded] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [isAddMemberExpanded, setIsAddMemberExpanded] = useState(true);
 
   // Queue Display State
   const [isQueueExpanded, setIsQueueExpanded] = useState(true); // New: Collapse state for queue
 
-  const [players, setPlayers] = useState<Player[]>(() => {
-    const saved = localStorage.getItem('badminton_players');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Migration: ensure level exists
-      return parsed.map((p: any) => ({ ...p, level: p.level || 'beginner' }));
-    }
-    return [];
-  });
-
-  const [courts, setCourts] = useState<Court[]>(() => {
-    const saved = localStorage.getItem('badminton_courts');
-    if (saved) return JSON.parse(saved);
-    return Array.from({ length: INITIAL_COURT_COUNT }, (_, i) => ({
-      id: i + 1,
-      name: `場地 ${i + 1}`,
-      playerIds: [],
-      startTime: null,
-    }));
-  });
-
-  // Member System State
-  const [members, setMembers] = useState<Member[]>(() => {
-    const saved = localStorage.getItem('badminton_members');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Migration: ensure level exists
-      return parsed.map((m: any) => ({ ...m, level: m.level || 'beginner' }));
-    }
-    return [];
-  });
+  // --- Sync State ---
+  const {
+    players,
+    courts,
+    members,
+    updatePlayers,
+    updateCourts,
+    updateMembers,
+    connectionStatus,
+    reconnect
+  } = useSync();
 
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
   const [newMemberName, setNewMemberName] = useState('');
@@ -240,36 +223,36 @@ export default function App() {
     }
 
     const newMember: Member = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: name,
       level: 'beginner', // Default level
       createdAt: Date.now()
     };
-    setMembers(prev => [newMember, ...prev]);
+    updateMembers(prev => [newMember, ...prev]);
     setNewMemberName('');
   }, [members]);
 
   // Update Member Level
   const updateMemberLevel = useCallback((memberId: string, newLevel: SkillLevel) => {
-    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, level: newLevel } : m));
+    updateMembers(prev => prev.map(m => m.id === memberId ? { ...m, level: newLevel } : m));
 
     // Optional: Also update the player if they are currently checked in?
     // Strategy: Let's sync them to keep consistency
     const memberName = members.find(m => m.id === memberId)?.name;
     if (memberName) {
-      setPlayers(prev => prev.map(p => p.name === memberName ? { ...p, level: newLevel } : p));
+      updatePlayers(prev => prev.map(p => p.name === memberName ? { ...p, level: newLevel } : p));
     }
   }, [members]);
 
   // Update Player Level (in Queue/Rest)
   const updatePlayerLevel = useCallback((playerId: string, newLevel: SkillLevel) => {
     // Update player state
-    setPlayers(prev => {
+    updatePlayers(prev => {
       const targetPlayer = prev.find(p => p.id === playerId);
       if (!targetPlayer) return prev;
 
       // Also sync back to member list for persistence
-      setMembers(currMembers =>
+      updateMembers(currMembers =>
         currMembers.map(m => m.name === targetPlayer.name ? { ...m, level: newLevel } : m)
       );
 
@@ -283,18 +266,18 @@ export default function App() {
     if (players.some(p => p.name === member.name)) return;
 
     const newPlayer: Player = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: member.name,
       status: 'idle',
       level: member.level,
       joinedAt: Date.now(),
     };
-    setPlayers(prev => [...prev, newPlayer]);
+    updatePlayers(prev => [...prev, newPlayer]);
   }, [players]);
 
   const removeMember = useCallback((memberId: string) => {
     if (confirm('確定要刪除此會員嗎？（這不會影響目前場上的球員）')) {
-      setMembers(prev => prev.filter(m => m.id !== memberId));
+      updateMembers(prev => prev.filter(m => m.id !== memberId));
     }
   }, []);
 
@@ -319,10 +302,10 @@ export default function App() {
   const batchJoinQueue = useCallback(() => {
     if (selectedPlayerIds.size === 0) return;
 
-    setPlayers(prev => {
+    updatePlayers(prev => {
       const now = Date.now();
       // Always create a new group if > 1 selected, otherwise undefined
-      const newGroupId = selectedPlayerIds.size > 1 ? crypto.randomUUID() : undefined;
+      const newGroupId = selectedPlayerIds.size > 1 ? generateUUID() : undefined;
 
       return prev.map(p => {
         if (selectedPlayerIds.has(p.id)) {
@@ -341,7 +324,7 @@ export default function App() {
   }, [selectedPlayerIds]);
 
   const joinQueue = useCallback((playerId: string) => {
-    setPlayers(prev => {
+    updatePlayers(prev => {
       return prev.map(p =>
         p.id === playerId ? {
           ...p,
@@ -354,14 +337,14 @@ export default function App() {
   }, []);
 
   const unbindPlayer = useCallback((playerId: string) => {
-    setPlayers(prev => prev.map(p =>
+    updatePlayers(prev => prev.map(p =>
       // When unbinding, reduce joinedAt slightly to make them appear BEFORE (above) the group they left
       p.id === playerId ? { ...p, groupId: undefined, joinedAt: p.joinedAt - 1 } : p
     ));
   }, []);
 
   const removeFromQueue = useCallback((playerId: string) => {
-    setPlayers(prev => prev.map(p =>
+    updatePlayers(prev => prev.map(p =>
       p.id === playerId ? { ...p, status: 'idle', groupId: undefined } : p
     ));
   }, []);
@@ -369,8 +352,8 @@ export default function App() {
   // Remove from session (Check out) -> "Early Leave"
   const deletePlayer = useCallback((playerId: string) => {
     if (confirm('確定要讓此球員早退嗎？（將回到會員列表）')) {
-      setPlayers(prev => prev.filter(p => p.id !== playerId));
-      setCourts(prev => prev.map(c => ({
+      updatePlayers(prev => prev.filter(p => p.id !== playerId));
+      updateCourts(prev => prev.map(c => ({
         ...c,
         playerIds: c.playerIds.filter(id => id !== playerId)
       })));
@@ -388,7 +371,7 @@ export default function App() {
     if (queuedCount === 0) return;
 
     if (confirm(`確定要讓排隊中的 ${queuedCount} 人全部回到休息區嗎？`)) {
-      setPlayers(prev => prev.map(p =>
+      updatePlayers(prev => prev.map(p =>
         p.status === 'queued'
           ? { ...p, status: 'idle', groupId: undefined }
           : p
@@ -403,7 +386,7 @@ export default function App() {
     if (idleCount === 0) return;
 
     if (confirm(`確定要讓休息區的 ${idleCount} 人全部離開球場嗎？\n他們將回到會員列表。`)) {
-      setPlayers(prev => prev.filter(p => p.status !== 'idle'));
+      updatePlayers(prev => prev.filter(p => p.status !== 'idle'));
       // Also clear selections just in case
       setSelectedPlayerIds(new Set());
     }
@@ -413,13 +396,13 @@ export default function App() {
   const resetSession = useCallback(() => {
     if (confirm('確定要結束所有比賽嗎？\n所有場上和排隊的球員將會回到休息區。')) {
       // Move everyone to idle (Bench)
-      setPlayers(prev => prev.map(p => ({
+      updatePlayers(prev => prev.map(p => ({
         ...p,
         status: 'idle',
         groupId: undefined
       })));
 
-      setCourts(prev => prev.map(c => ({
+      updateCourts(prev => prev.map(c => ({
         ...c,
         playerIds: [],
         startTime: null
@@ -429,7 +412,7 @@ export default function App() {
   }, []);
 
   const addCourt = useCallback(() => {
-    setCourts(prev => {
+    updateCourts(prev => {
       const nextId = prev.length > 0 ? Math.max(...prev.map(c => c.id)) + 1 : 1;
       const newCourt: Court = {
         id: nextId,
@@ -442,7 +425,7 @@ export default function App() {
   }, []);
 
   const removeCourt = useCallback(() => {
-    setCourts(prev => {
+    updateCourts(prev => {
       if (prev.length <= 1) {
         alert("至少需要保留一個場地");
         return prev;
@@ -477,11 +460,11 @@ export default function App() {
       speak(announcement);
     }
 
-    setPlayers(prev => prev.map(p =>
+    updatePlayers(prev => prev.map(p =>
       playerIds.includes(p.id) ? { ...p, status: 'playing' } : p
     ));
 
-    setCourts(prev => prev.map(c =>
+    updateCourts(prev => prev.map(c =>
       c.id === courtId ? { ...c, playerIds, startTime: Date.now() } : c
     ));
 
@@ -493,11 +476,11 @@ export default function App() {
 
     const finishedPlayerIds = court.playerIds;
 
-    setCourts(prev => prev.map(c =>
+    updateCourts(prev => prev.map(c =>
       c.id === courtId ? { ...c, playerIds: [], startTime: null } : c
     ));
 
-    setPlayers(prev => prev.map(p =>
+    updatePlayers(prev => prev.map(p =>
       finishedPlayerIds.includes(p.id) ? { ...p, status: 'idle', groupId: undefined } : p
     ));
   }, [courts]);
@@ -567,6 +550,19 @@ export default function App() {
               <Trophy className="w-5 h-5 text-white" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-white">羽球排隊助手</h1>
+            <div className="ml-auto" title={
+              connectionStatus === 'connected' ? '已連線' :
+                connectionStatus === 'connecting' ? '連線中...' :
+                  '未連線'
+            }>
+              {connectionStatus === 'connected' && <Wifi className="w-4 h-4 text-green-500" />}
+              {connectionStatus === 'connecting' && <RefreshCw className="w-4 h-4 text-yellow-500 animate-spin" />}
+              {(connectionStatus === 'disconnected' || connectionStatus === 'error') && (
+                <button onClick={reconnect} className="hover:opacity-80">
+                  <WifiOff className="w-4 h-4 text-red-500" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Stats Summary */}
