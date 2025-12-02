@@ -35,8 +35,8 @@ export default function App() {
   const [isMemberListExpanded, setIsMemberListExpanded] = useState(true);
 
   // Member UI Collapse State
-  const [isSearchExpanded, setIsSearchExpanded] = useState(true);
-  const [isAddMemberExpanded, setIsAddMemberExpanded] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [isAddMemberExpanded, setIsAddMemberExpanded] = useState(true);
 
   // Queue Display State
   const [isQueueExpanded, setIsQueueExpanded] = useState(true); // New: Collapse state for queue
