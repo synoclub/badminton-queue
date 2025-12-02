@@ -6,6 +6,7 @@ import { PlayerAvatar } from './components/PlayerAvatar';
 import { useSync } from './contexts/SyncContext';
 import { generateUUID } from './utils/uuid';
 
+// TODO TESTTT
 type Tab = 'queue' | 'members';
 
 // Helper to generate consistent colors for groups
