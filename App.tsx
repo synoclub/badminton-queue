@@ -20,8 +20,6 @@ const getGroupColor = (groupId: string) => {
   return colors[Math.abs(hash) % colors.length];
 };
 
-// test
-
 export default function App() {
   // --- State ---
   const [activeTab, setActiveTab] = useState<Tab>('queue');
